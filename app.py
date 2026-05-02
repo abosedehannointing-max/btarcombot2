@@ -14,8 +14,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ============ LANGUAGE SUPPORT ============
-user_languages = {}
+user_languages = {}  # {chat_id: 'en', 'ar', or 'tr'}
 
+# Translations for all three languages
 TEXTS = {
     'en': {
         'welcome': "🎨 **YouTube Thumbnail Generator Bot**\n\nSend me any text description, and I'll create a thumbnail!\n\n**Examples:**\n• 'Excited gamer winning tournament, red background'\n• 'Shocked face with colorful gradient'\n• 'Cute cat with OMG text and arrows'\n\nUse /language to change language",
@@ -25,21 +26,35 @@ TEXTS = {
         'no_api_key': "❌ Failed to generate thumbnail. Please check OpenAI API key.",
         'echo_mode': "✅ Bot is working! You said: {}\n\n(Add OPENAI_API_KEY to generate thumbnails)",
         'language_changed': "🌐 Language changed to English!\n\nSend /start to see welcome message.",
-        'current_language': "🌐 Current language: English\nUse /language to switch to Arabic",
-        'language_prompt': "🌐 Choose your language:\n/en - English\n/ar - العربية",
+        'current_language': "🌐 Current language: English\nUse /language to change language",
+        'language_prompt': "🌐 Choose your language:\n/en - English\n/ar - العربية\n/tr - Türkçe",
+        # Arabic translations
         'arabic_welcome': "🎨 **بوت إنشاء صور مصغرة لليوتيوب**\n\nأرسل لي أي وصف نصي، وسأقوم بإنشاء صورة مصغرة!\n\n**أمثلة:**\n• 'لاعب متحمس يفوز في البطولة، خلفية حمراء'\n• 'وجه مندهش مع تدرج لوني'\n• 'قطة لطيفة مع نص OMG وسهام'\n\nاستخدم /language لتغيير اللغة",
         'arabic_generating': "🎨 جاري إنشاء الصورة المصغرة... (30-60 ثانية)",
         'arabic_success': "✅ تم إنشاء الصورة المصغرة لعبارة:",
         'arabic_error': "❌ خطأ: {}\n\nيرجى المحاولة مرة أخرى بعبارة أبسط.",
         'arabic_language_changed': "🌐 تم تغيير اللغة إلى العربية!\n\nأرسل /start لرؤية رسالة الترحيب.",
-        'arabic_current_language': "🌐 اللغة الحالية: العربية\nاستخدم /language للتبديل إلى الإنجليزية"
+        'arabic_current_language': "🌐 اللغة الحالية: العربية\nاستخدم /language لتغيير اللغة",
+        'arabic_language_prompt': "🌐 اختر لغتك:\n/en - الإنجليزية\n/ar - العربية\n/tr - التركية",
+        # Turkish translations
+        'turkish_welcome': "🎨 **YouTube Küçük Resim Oluşturma Botu**\n\nBana herhangi bir metin açıklaması gönderin, bir küçük resim oluşturayım!\n\n**Örnekler:**\n• 'Turnuva kazanan heyecanlı oyuncu, kırmızı arka plan'\n• 'Renkli geçişli şaşkın yüz'\n• 'OMG metni ve okları olan sevimli kedi'\n\nDil değiştirmek için /language kullanın",
+        'turkish_generating': "🎨 YouTube küçük resminiz oluşturuluyor... (30-60 saniye)",
+        'turkish_success': "✅ Şunun için küçük resim oluşturuldu:",
+        'turkish_error': "❌ Hata: {}\n\nLütfen daha basit bir ifade deneyin.",
+        'turkish_language_changed': "🌐 Dil Türkçe olarak değiştirildi!\n\nHoşgeldiniz mesajını görmek için /start gönderin.",
+        'turkish_current_language': "🌐 Mevcut dil: Türkçe\nDil değiştirmek için /language kullanın",
+        'turkish_language_prompt': "🌐 Dilinizi seçin:\n/en - İngilizce\n/ar - Arapça\n/tr - Türkçe"
     }
 }
 
 def get_text(chat_id, key, *args):
+    """Get translated text based on user's language preference"""
     lang = user_languages.get(chat_id, 'en')
-    text = TEXTS['en'].get(key, TEXTS['en'][key]) if lang == 'en' else TEXTS['en'].get(f'arabic_{key}', TEXTS['en'][key])
     
+    # Default to English text
+    text = TEXTS['en'].get(key, TEXTS['en'][key])
+    
+    # Handle language-specific overrides
     if lang == 'ar':
         arabic_keys = {
             'welcome': 'arabic_welcome',
@@ -47,11 +62,26 @@ def get_text(chat_id, key, *args):
             'success': 'arabic_success',
             'error': 'arabic_error',
             'language_changed': 'arabic_language_changed',
-            'current_language': 'arabic_current_language'
+            'current_language': 'arabic_current_language',
+            'language_prompt': 'arabic_language_prompt'
         }
         if key in arabic_keys:
             text = TEXTS['en'].get(arabic_keys[key], text)
     
+    elif lang == 'tr':
+        turkish_keys = {
+            'welcome': 'turkish_welcome',
+            'generating': 'turkish_generating',
+            'success': 'turkish_success',
+            'error': 'turkish_error',
+            'language_changed': 'turkish_language_changed',
+            'current_language': 'turkish_current_language',
+            'language_prompt': 'turkish_language_prompt'
+        }
+        if key in turkish_keys:
+            text = TEXTS['en'].get(turkish_keys[key], text)
+    
+    # Format with arguments if provided
     if args:
         return text.format(*args)
     return text
@@ -64,10 +94,14 @@ def home():
     return jsonify({
         "status": "alive",
         "bot": "running",
-        "languages": ["English", "Arabic"],
+        "languages": ["English", "Arabic", "Turkish"],
         "telegram_token_set": bool(TELEGRAM_TOKEN),
         "openai_key_set": bool(OPENAI_API_KEY)
     }), 200
+
+@flask_app.route('/health')
+def health():
+    return jsonify({"status": "healthy"}), 200
 
 def run_webserver():
     port = int(os.environ.get("PORT", 5000))
@@ -79,6 +113,7 @@ TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}" if TELEGRAM_T
 last_update_id = 0
 
 def send_message(chat_id, text, parse_mode=None):
+    """Send text message to user"""
     try:
         url = f"{TELEGRAM_API_URL}/sendMessage"
         data = {"chat_id": chat_id, "text": text}
@@ -90,6 +125,7 @@ def send_message(chat_id, text, parse_mode=None):
         logger.error(f"Send message error: {e}")
 
 def send_photo(chat_id, photo_bytes, caption=""):
+    """Send photo to user"""
     try:
         url = f"{TELEGRAM_API_URL}/sendPhoto"
         files = {"photo": ("thumb.jpg", photo_bytes, "image/jpeg")}
@@ -100,6 +136,7 @@ def send_photo(chat_id, photo_bytes, caption=""):
         logger.error(f"Send photo error: {e}")
 
 def generate_thumbnail(prompt, lang='en'):
+    """Generate thumbnail using OpenAI DALL-E with language support"""
     if not OPENAI_API_KEY:
         return None
     
@@ -107,8 +144,11 @@ def generate_thumbnail(prompt, lang='en'):
         import openai
         openai.api_key = OPENAI_API_KEY
         
+        # Customize prompt based on language
         if lang == 'ar':
             full_prompt = f"Create an eye-catching YouTube thumbnail based on this Arabic description: {prompt}. Make it vibrant, high contrast, 16:9 aspect ratio, clickable design."
+        elif lang == 'tr':
+            full_prompt = f"Create an eye-catching YouTube thumbnail based on this Turkish description: {prompt}. Make it vibrant, high contrast, 16:9 aspect ratio, clickable design."
         else:
             full_prompt = f"Create an eye-catching YouTube thumbnail: {prompt}. Make it vibrant, high contrast, 16:9 aspect ratio, clickable design."
         
@@ -131,7 +171,7 @@ def generate_thumbnail(prompt, lang='en'):
         raise e
 
 def get_updates(offset=None):
-    """Get new messages from Telegram with better error handling"""
+    """Get new messages from Telegram"""
     try:
         url = f"{TELEGRAM_API_URL}/getUpdates"
         params = {"timeout": 30, "allowed_updates": ["message"]}
@@ -143,7 +183,7 @@ def get_updates(offset=None):
         if data.get("ok"):
             return data.get("result", [])
         elif data.get("error_code") == 409:
-            logger.warning("Conflict detected - another instance running. Waiting...")
+            logger.warning("Conflict detected, waiting 5 seconds...")
             time.sleep(5)
             return []
         else:
@@ -155,26 +195,32 @@ def get_updates(offset=None):
         return []
 
 def process_message(message):
+    """Process incoming message"""
     try:
         chat_id = message["chat"]["id"]
         
+        # Initialize language for new users
         if chat_id not in user_languages:
             user_languages[chat_id] = 'en'
         
+        # Check if it's a text message
         if "text" not in message:
             return
         
         text = message["text"].strip()
-        logger.info(f"Processing: {text[:50]}")
+        logger.info(f"Processing message from {chat_id}: {text[:50]}")
         
+        # Handle /start command
         if text == "/start":
             send_message(chat_id, get_text(chat_id, 'welcome'), parse_mode="Markdown")
             return
         
+        # Handle /language command
         if text == "/language":
             send_message(chat_id, get_text(chat_id, 'language_prompt'))
             return
         
+        # Handle language switch commands
         if text == "/en":
             user_languages[chat_id] = 'en'
             send_message(chat_id, get_text(chat_id, 'language_changed'))
@@ -185,10 +231,17 @@ def process_message(message):
             send_message(chat_id, get_text(chat_id, 'language_changed'))
             return
         
+        if text == "/tr":
+            user_languages[chat_id] = 'tr'
+            send_message(chat_id, get_text(chat_id, 'language_changed'))
+            return
+        
+        # For any other text, generate a thumbnail
         send_message(chat_id, get_text(chat_id, 'generating'))
         
         try:
             if OPENAI_API_KEY:
+                # Generate and send the thumbnail
                 thumbnail_bytes = generate_thumbnail(text, user_languages[chat_id])
                 if thumbnail_bytes:
                     caption = f"{get_text(chat_id, 'success')} {text[:100]}"
@@ -196,6 +249,7 @@ def process_message(message):
                 else:
                     send_message(chat_id, get_text(chat_id, 'no_api_key'))
             else:
+                # Echo mode if no API key
                 send_message(chat_id, get_text(chat_id, 'echo_mode').format(text))
                 
         except Exception as e:
@@ -214,7 +268,7 @@ def main():
         return
     
     logger.info("=" * 50)
-    logger.info("YouTube Thumbnail Bot Starting (Bilingual: EN/AR)...")
+    logger.info("YouTube Thumbnail Bot Starting (Tri-lingual: EN/AR/TR)...")
     logger.info(f"TELEGRAM_TOKEN: {'✓' if TELEGRAM_TOKEN else '✗'}")
     logger.info(f"OPENAI_API_KEY: {'✓' if OPENAI_API_KEY else '✗'}")
     logger.info("=" * 50)
@@ -229,7 +283,7 @@ def main():
     except Exception as e:
         logger.warning(f"Clear session warning: {e}")
     
-    # Start web server
+    # Start web server in background thread
     webserver_thread = threading.Thread(target=run_webserver, daemon=True)
     webserver_thread.start()
     logger.info("Web server thread started")
@@ -238,6 +292,7 @@ def main():
     
     logger.info("Starting polling loop...")
     
+    # Main polling loop
     while True:
         try:
             offset = last_update_id + 1 if last_update_id else None
@@ -245,7 +300,9 @@ def main():
             
             for update in updates:
                 last_update_id = update["update_id"]
+                
                 if "message" in update:
+                    logger.info(f"New message received (ID: {last_update_id})")
                     process_message(update["message"])
             
             time.sleep(1)
